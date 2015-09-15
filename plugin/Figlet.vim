@@ -1,9 +1,9 @@
 " vim:ft=vim foldmethod=marker tw=78:
 " ==========================================================================
 " File:         Figlet.vim (global plugin)
-" Last Changed: 2010-12-10
+" Last Changed: 2010-13-10
 " Maintainer:   Erik Falor <ewfalor@gmail.com>
-" Version:      1.0
+" Version:      1.1
 " License:      Vim License
 " ==========================================================================
 
@@ -122,19 +122,20 @@
 " If you're on Windows, hope is not lost.  There is a figlet port for MS-DOS
 " here: ftp://ftp.figlet.org/pub/figlet/program/ms-dos/figdos22.zip Be sure
 " to specify the font directory in your _vimrc through the g:filgetOpts
-" variable.  Figlet for MS-DOS is an old program, so no fancy paths with
-" spaces:
+" variable.  Figlet for MS-DOS is an old program, so you should make sure that
+" your font files conform to FAT-16 style 8.3 filenames, and don't use fancy
+" paths with spaces:
 "
-" let g:figletOpts = '-d C:\PROGRA~1\FIGLET\FONTS'
+" let g:figletFontDir = 'C:\PROGRA~1\FIGLET\FONTS'
 
 "     _ ,                                         
 "   ,- -               ,                          
 "  _||_          _    ||                          
-" ' ||    _-_   < \, =||= \\ \\ ,._-_  _-_   _-_, 
-"   ||   || \\  /-||  ||  || ||  ||   || \\ ||_.  
-"   |,   ||/   (( ||  ||  || ||  ||   ||/    ~ || 
-" _-/    \\,/   \/\\  \\, \\/\\  \\,  \\,/  ,-_-  
-
+" ' ||    _-_   < \, =||= \\ \\ ,._-_  _-_   _-_,  <>
+"   ||   || \\  /-||  ||  || ||  ||   || \\ ||_.     
+"   |,   ||/   (( ||  ||  || ||  ||   ||/    ~ ||    
+" _-/    \\,/   \/\\  \\, \\/\\  \\,  \\,/  ,-_-   <>
+                                                     
 "1.	If figlet fails to run, your original text is put back w/o messing up your
 "	undo history too much (you can still redo to the oopsie)
 
@@ -142,11 +143,15 @@
 "	typing the -f switch to list available fonts.
 "	Get a lot of fonts at http://www.figlet.org/fontdb.cgi
 
-"3.	Width is inferred from your 'textwidth'
+"3.	Width is inferred from your 'textwidth' (except on Windows with the DOS
+"	build of figlet, as noted above)
 
-"4.	The g@ operator takes all of the chosen text (selected with motion
+"4.	The :FigletFontDemo command will show you a sample of each font installed
+"	in your font directory
+
+"5.	The g@ operator takes all of the chosen text (selected with motion
 "	commands or text-objects) and puts it all into the same paragraph.
-"	the :Figlet command works one line at a time.  It's makes a difference
+"	the :Figlet command works one line at a time.  It makes a difference
 "	when rendering text like this:
 "
 "1.
@@ -182,7 +187,7 @@
 "    -___-\\, ,-_-   \/\\ \\_-| \\,/  <> 
 "                          /  \          
 "                         '----`         
-"
+
 " :Figlet takes the same arguments that the program figlet accepts.  It does a
 " little bit of parsing for arguments it can grok, and passes the rest through.
 " If no arguments are given, it will fall back to the global parameters you can
@@ -193,20 +198,9 @@
 " through the globals:
 "
 " g:figletFont - the name of the font to use
+" g:figletFontDir  - full path to the directory storing your figlet fonts
 " g:figletOpts - the other arguments you want to pass figlet
 
-"  ,         |\            
-" ||          \\           
-"=||=  /'\\  / \\  /'\\ <> 
-" ||  || || || || || ||    
-" ||  || || || || || ||    
-" \\, \\,/   \\/  \\,/  <> 
-"
-"1.	I haven't tried the -f font name completion on a Wintendo yet, dunno if
-"that works.
-
-"2.	If you start vim, then make figlet un-executable, and try to :Figlet some
-"	text before creating an undo history, you raise an E790
 
 " 8""""8                         8""""8                                 
 " 8    8   eeee eeeee e  eeeee   8      eeee eeeee  e  eeeee eeeee      
@@ -219,72 +213,222 @@
 "eeeee eeeee eeeee eeeee eeeee eeeee eeeee eeeee eeeee eeeee eeeee eeeee 
 
 
-" Exit quickly when the script has already been loaded or when 'compatible'
-" is set.
-
+" Exit quickly when the script has already been loaded
 if exists('g:loaded_Figlet')
     finish
 endif
 "autocmd! BufWritePost Figlet.vim nested source %
 
-let g:loaded_Figlet = '1.0'
+let g:loaded_Figlet = '1.1'
 
+
+" A function to inform the user if there is a problem finding Figlet
 function! FigletFail(...)
-	echoerr 'figlet is not installed in your $PATH'
+	echoerr 'figlet executable is not installed in your $PATH'
 endfunction
 
-"check to see if there is a figlet program in the path
+
+" Check to see if there is a figlet program in the path
 if !executable('figlet')
 	set operatorfunc=FigletFail
-	command! -range -nargs=* Figlet :call FigletFail(<q-args>)
+	command! -range -nargs=* Figlet :call FigletFail(<f-args>)
 	finish
 endif
 
-function! <SID>RunFiglet(text, opts, width, font) "{{{
+
+" Work around some bugs with the DOS build of figlet.exe
+" {{{
+if has('dos16') || has('dos32') || has('win16') || has ('win32') ||
+			\has('win64') || has('win95')
+	"Passing -w causes a stack overflow in figlet.exe about 50% of the time
+	let s:overrideWidth = 1
+	"using -- to separate options from text crashes figlet about 50% of the
+	"time as well.
+	let s:argsep = ''
+else
+	let s:argsep = '--'
+endif "}}}
+
+
+" Run the Figlet program, passing in the applicable options
+function! <SID>RunFiglet(text, opts, width, font, fontdir) "{{{
 	" set any custom options (such as path to fonts)
-	if exists('g:figletOpts')
-		let opts = g:figletOpts
-	elseif '' != a:opts
+	if '' != a:opts
 		let opts = a:opts
+	elseif exists('g:figletOpts')
+		let opts = g:figletOpts
 	else
 		let opts = ''
 	endif
-
+	
 	" set the width to &textwidth or default
-	if &textwidth != 0
-		let width = '-w ' . &textwidth
+	if exists('s:overrideWidth') 
+		let width = ''
 	elseif '' != a:width
 		let width = '-w ' . a:width
+	elseif &textwidth != 0
+		let width = '-w ' . &textwidth
 	else
 		let width = '-w 76'
 	endif
-
+	
 	" set the font (figlet itself defaults to 'standard')
-	if exists('g:figletFont')
-		let font = '-f ' . g:figletFont
-	elseif '' != a:font
+	if '' != a:font
 		let font = '-f ' . a:font
+	elseif exists('g:figletFont')
+		let font = '-f ' . g:figletFont
 	else
 		let font = ''
 	endif
-
-	let command = printf("figlet %s %s %s '%s'",
-				\opts, width, font, a:text)
-
-	let result = system(command)
-
+	
+	" set the font (figlet itself defaults to 'standard')
+	if '' != a:fontdir
+		let fontdir = '-d ' . a:fontdir
+	elseif exists('g:figletFontDir')
+		let fontdir = '-d ' . g:figletFontDir
+	else
+		let fontdir = ''
+	endif
+	
+	let command = printf('figlet %s %s %s %s %s %s',
+				\opts, width, font, fontdir, s:argsep, shellescape(a:text))
+	
+	try
+		let result = system(command)
+	catch /^Vim\%((\a\+)\)\=:E484/   " Can't open file [tempfile]
+		throw 'figlet error'
+	endtry
+	
 	if 0 != v:shell_error
 		throw 'figlet error'
 	endif
 	return split(result, "\n")
 endfunction "}}}
 
+
+" Return the font directory to be used by Figlet - it's either the value of
+" g:figletFontDir, or the one compiled-in to Figlet itself
+let s:figletFontDir = ''
+function! s:GetFigletFontDir() "{{{
+	if exists('g:figletFontDir')
+		let s:figletFontDir  = g:figletFontDir
+	else
+		let s:figletFontDir = split(system('figlet -I2'), "\n")[0]
+	endif
+	return s:figletFontDir 
+endfunction "}}} 
+
+
+" Return a list of names of all font files in Figlet's font directory
+let s:figletFonts = []
+function! s:GetFigletFonts() "{{{
+	if [] == s:figletFonts 
+		let fontDir = s:GetFigletFontDir()
+		let fonts = split(glob(fontDir . '/*.fl?'), "\n")
+		"strip fontDir and ext from each entry
+		let s:figletFonts = map(fonts, 'fnamemodify(v:val, ":t:r")')
+	endif
+	return s:figletFonts
+endfunction "}}}
+
+
+" For each font found in Figlet's font directory, generate a small sample
+" & show the results in a new scratch buffer.  If this buffer hasn't been
+" wiped out, subsequent invocations will reload the buffer instead of
+" re-generating it
+function! FigFontDemo() "{{{
+	let bufname = 'FigletFontDemo.txt'
+    let bufnum = bufnr(bufname) 
+    let vwinnum = bufwinnr(bufnum)
+    if bufnum >= 0 && vwinnum < 0
+        " the buffer already exists && window not open
+        try
+            if winnr("$") == 1 && bufname("%") == '' && &modified == 0
+                execute 'buffer ' . bufnum
+            else
+                execute 'sbuffer ' . bufnum
+            endif
+        catch /^Vim\%((\a\+)\)\=:E36/   " Not enough room
+            " Can't split, then switch
+            execute 'buffer ' . bufnum
+        endtry
+    elseif bufnum >= 0 && vwinnum >= 0    
+        " else if buffer exists in a window
+        "  switch to the window
+        if vwinnum != bufwinnr('%')
+          execute "normal \<c-w>" . vwinnum . 'w'
+        endif
+    else
+        " else if no buffer, create it
+        try 
+            if winnr("$") == 1 && bufname("%") == '' && &modified == 0
+                execute 'edit ' . bufname
+            else
+                execute 'split ' . bufname
+            endif
+        catch /^Vim\%((\a\+)\)\=:E36/   " Not enough room
+            "Can't split, then switch
+            execute 'edit ' . bufname
+        endtry
+		
+        "set up buffer-local settings for this window
+        setlocal bufhidden=hide foldcolumn=0 nofoldenable 
+                    \nonumber norightleft noswapfile nowrap
+		
+        "arrange to have these settings restored upon re-entering the buffer
+        autocmd BufEnter <buffer> setlocal noswapfile 
+                    \bufhidden=hide nonumber nowrap norightleft 
+                    \foldcolumn=0 nofoldenable
+		
+		"now that the buffer is set-up
+		0put =printf('All figlet fonts in %s:', s:GetFigletFontDir())
+		put =''
+		for font in s:GetFigletFonts()
+			try
+				echon printf("Demoing font %s...\r", font)
+				put =font
+				put ='==========================='
+				silent put =<SID>RunFiglet(font, '', '', font, '')
+			catch /figlet error/
+				put =printf('figlet failed on font %s', font)
+			finally
+				put =''
+			endtry
+		endfor
+		echon "Done"
+	
+    endif
+	setlocal nomodifiable nomodified nofoldenable
+	1
+endfunction "}}}
+
+command! -nargs=0 FigletFontDemo :call FigFontDemo()
+
+
+" Implements command-line completion for the :Figlet command
+let s:completionFonts = ''
+function! FigletComplete(arglead, cmdline, cursorpos) "{{{
+	if -1 < strridx(a:cmdline, '-f', a:cursorpos) &&
+				\strridx(a:cmdline, '-f', a:cursorpos) == strridx(a:cmdline, '-', a:cursorpos)
+		"get a dirlisting of *.flf *.flc files in s:figletFontDir
+		if '' == s:completionFonts
+			let s:completionFonts = join(s:GetFigletFonts(), "\n")
+		endif
+		return s:completionFonts
+	else
+		return "-f\n-d\n-p\n-n\n-s\n-S\n-k\n-W\n-o\n-c\n-l\n-r\n-x\n-L\n-R\n-X\n"
+	endif
+endfunction "}}} 
+
+
+" The guts of the :Figlet command - runs figlet over a range of lines
 function! FigRange(...) range "{{{
 	"figure out the arguments
 	let i = 0
 	let opts = ''
 	let width = ''
 	let font = ''
+	let fontdir = ''
 	while i < len(a:000)
 		if '-w' == a:000[i]
 			let width = a:000[i+1]
@@ -292,75 +436,60 @@ function! FigRange(...) range "{{{
 		elseif '-f' == a:000[i]
 			let font = a:000[i+1]
 			let i += 2
+		elseif '-d' == a:000[i]
+			let fontdir = a:000[i+1]
+			let i += 2
 		else
 			let opts .= a:000[i] . ' '
 			let i += 1
 		endif
 	endwhile
-
+	
 	"set the cursor's position at the begining of the range
 	let pos = [0, a:firstline, 0, 0]
-
+	
 	"collect the specified text into a list
 	let text = getline(a:firstline, a:lastline)
-
+	
 	"delete the original text
 	execute printf("%d,%dd", a:firstline, a:lastline)
-
+	
 	let figletText = []
-
+	
 	"render each line in turn, and accumulate the text
 	try
 		for line in text
-			call extend(figletText, <SID>RunFiglet(line, opts, width, font))
+			call extend(figletText, <SID>RunFiglet(line, opts, width, font, fontdir))
 		endfor
 	catch /figlet error/
 		undo
-		undojoin
-		return
+		echoerr "Figlet failed to render this text"
 	endtry
-
+	
 	"undo the Figlet text replacement in one move instead of two
 	undojoin
-
+	
 	" the append function appends below the cursor line;
 	" so we need to rewind the line by one
 	call append(pos[1]  - 1, figletText)
-
+	
 	"restore cursor position
 	call setpos('.', pos)
 endfunction "}}}
 
-let s:figletFonts = ''
-function! FigletComplete(arglead, cmdline, cursorpos) "{{{
+command! -range -complete=custom,FigletComplete -nargs=* Figlet :<line1>,<line2>call FigRange(<f-args>)
 
-	if -1 < strridx(a:cmdline, '-f', a:cursorpos) &&
-				\strridx(a:cmdline, '-f', a:cursorpos) == strridx(a:cmdline, '-', a:cursorpos)
-		"get a dirlisting of *.flf *.flc files in s:figletFontDir
-		if '' == s:figletFonts
-			let figletFontDir = split(system('figlet -I2'), "\n")[0]
-			let fonts = split(glob(figletFontDir . '/*.fl?'), "\n")
-			"strip figletFontDir and ext from each entry
-			call map(fonts, 'fnamemodify(v:val, ":t:r")')
-			let s:figletFonts = join(fonts, "\n")
-		endif
-		return s:figletFonts
-	else
-		return "-f\n-d\n-p\n-n\n-s\n-S\n-k\n-W\n-o\n-c\n-l\n-r\n-x\n-L\n-R\n-X\n"
-	endif
-endfunction "}}}
 
-command! -range -complete=custom,FigletComplete -nargs=* Figlet :<line1>,<line2>call FigRange(<q-args>)
-
-" delete the text specified by the motion & prepare to call figlet
+" The guts of the g@ operator -  delete the text specified by the motion
+" & replace it with the result of calling figlet
 function! FigOper(motionType) "{{{
 	"save the cursor's position
 	let pos = getpos('.')
-
+	
 	" save the contents and attributes of the " register
 	let saveReg = getreg('"')
 	let saveRegType = getregtype('"')
-
+	
 	" delete the specified text into register "
 	if a:0  " Invoked from Visual mode, use '< and '> marks.
 		silent exe "normal! `<" . a:motionType . "`>x"
@@ -371,33 +500,32 @@ function! FigOper(motionType) "{{{
 	else
 		silent exe "normal! `[v`]lx"
 	endif
-
+	
 	" restore register "
 	let text = substitute(@", '\_s\+', ' ', 'g')
-
 	call setreg('"', saveReg, saveRegType)
-
+	
 	" call RunFiglet() using defaults or global options
 	try
-		let figletText = <SID>RunFiglet(text, '', '', '')
+		let figletText = <SID>RunFiglet(text, '', '', '', '')
 	catch /figlet error/
 		undo
-		undojoin
-		return
+		echoerr "Figlet failed to render this text"
 	endtry
-
+	
 	"undo the Figlet text replacement in one move instead of two
 	undojoin
-
+	
 	" the append function appends below the cursor line;
 	" so we need to rewind the line by one
 	call append(pos[1]  - 1, figletText)
-
+	
 	"restore cursor position
 	call setpos('.', pos)
 endfunction "}}}
 
 set operatorfunc=FigOper
+
 
 " 8""""                            8""""                 
 " 8     eeeee eeeee   eeeee eeee   8     e  e     eeee   
@@ -411,4 +539,3 @@ set operatorfunc=FigOper
 " ( C | o | p | y | l | e | f | t ) ( 2 | 0 | 1 | 0 )
 "  \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/   \_/ \_/ \_/ \_/ 
 
-"
