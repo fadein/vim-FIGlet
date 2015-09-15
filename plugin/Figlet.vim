@@ -1,10 +1,11 @@
 " vim:ft=vim foldmethod=marker tw=78:
 " ==========================================================================
 " File:         Figlet.vim (global plugin)
-" Last Changed: 2010-13-10
+" Last Changed: 2011-06-22
 " Maintainer:   Erik Falor <ewfalor@gmail.com>
-" Version:      1.1
+" Version:      2.0
 " License:      Vim License
+" Source:		http://www.vim.org/scripts/script.php?script_id=3359
 " ==========================================================================
 
 "  _____ _       _      _        _  __        
@@ -116,15 +117,17 @@
 " |__]   |   .   |___ |  \ | | \_    |    |  | |___ |__| |  \    
 
 
-" This plugin requires that the fully awesome figlet be installed on your
-" system.
+" This plugin requires that the fully awesome program `figlet' be installed on
+" your system.
 "
 " If you're on Windows, hope is not lost.  There is a figlet port for MS-DOS
-" here: ftp://ftp.figlet.org/pub/figlet/program/ms-dos/figdos22.zip Be sure
-" to specify the font directory in your _vimrc through the g:filgetOpts
-" variable.  Figlet for MS-DOS is an old program, so you should make sure that
-" your font files conform to FAT-16 style 8.3 filenames, and don't use fancy
-" paths with spaces:
+" here: ftp://ftp.figlet.org/pub/figlet/program/ms-dos/figdos22.zip.
+" Be sure to specify the font directory in your _vimrc through the
+" g:filgetOpts variable.
+"
+" Figlet for MS-DOS is an old program, so you should make sure that your font
+" files conform to FAT-16 style 8.3 filenames, and don't use fancy paths with
+" spaces:
 "
 " let g:figletFontDir = 'C:\PROGRA~1\FIGLET\FONTS'
 
@@ -137,17 +140,26 @@
 " _-/    \\,/   \/\\  \\, \\/\\  \\,  \\,/  ,-_-   <>
                                                      
 "1.	If figlet fails to run, your original text is put back w/o messing up your
-"	undo history too much (you can still redo to the oopsie)
+"	undo history too much (you can still redo to the oopsie).
 
 "2.	:Figlet command can accept a range, and does completion.  Hit tab after
 "	typing the -f switch to list available fonts.
 "	Get a lot of fonts at http://www.figlet.org/fontdb.cgi
+"
+"	Ex. Render lines 1 through 7 in the tengwar font:
+"	:1,7Figlet -f tengwar
+"
 
 "3.	Width is inferred from your 'textwidth' (except on Windows with the DOS
-"	build of figlet, as noted above)
+"	build of figlet, as noted above).
 
 "4.	The :FigletFontDemo command will show you a sample of each font installed
-"	in your font directory
+"	in your font directory.  By default this command will render each font
+"	eponymously, or you may specify a snippet of text to render so as to allow
+"	comparison between fonts.
+"
+"	Ex. See what the word "Supercalifragilisticexpialidocious" looks like in each font:
+"	:FigletFontDemo Supercalifragilisticexpialidocious
 
 "5.	The g@ operator takes all of the chosen text (selected with motion
 "	commands or text-objects) and puts it all into the same paragraph.
@@ -219,7 +231,7 @@ if exists('g:loaded_Figlet')
 endif
 "autocmd! BufWritePost Figlet.vim nested source %
 
-let g:loaded_Figlet = '1.1'
+let g:loaded_Figlet = '2.0'
 
 
 " A function to inform the user if there is a problem finding Figlet
@@ -336,7 +348,7 @@ endfunction "}}}
 " & show the results in a new scratch buffer.  If this buffer hasn't been
 " wiped out, subsequent invocations will reload the buffer instead of
 " re-generating it
-function! FigFontDemo() "{{{
+function! FigFontDemo(...) "{{{
 	let bufname = 'FigletFontDemo.txt'
     let bufnum = bufnr(bufname) 
     let vwinnum = bufwinnr(bufnum)
@@ -388,7 +400,11 @@ function! FigFontDemo() "{{{
 				echon printf("Demoing font %s...\r", font)
 				put =font
 				put ='==========================='
-				silent put =<SID>RunFiglet(font, '', '', font, '')
+				if a:0 == 1 && len(a:1) > 0
+					silent put =<SID>RunFiglet(a:1, '', '', font, '')
+				else
+					silent put =<SID>RunFiglet(font, '', '', font, '')
+				endif
 			catch /figlet error/
 				put =printf('figlet failed on font %s', font)
 			finally
@@ -402,7 +418,7 @@ function! FigFontDemo() "{{{
 	1
 endfunction "}}}
 
-command! -nargs=0 FigletFontDemo :call FigFontDemo()
+command! -nargs=? FigletFontDemo :call FigFontDemo(<f-args>)
 
 
 " Implements command-line completion for the :Figlet command
@@ -536,6 +552,6 @@ set operatorfunc=FigOper
 
 "   _   _   _   _   _   _   _   _     _   _   _   _  
 "  / \ / \ / \ / \ / \ / \ / \ / \   / \ / \ / \ / \ 
-" ( C | o | p | y | l | e | f | t ) ( 2 | 0 | 1 | 0 )
+" ( C | o | p | y | l | e | f | t ) ( 2 | 0 | 1 | 1 )
 "  \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/   \_/ \_/ \_/ \_/ 
 
