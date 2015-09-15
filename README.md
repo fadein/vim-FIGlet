@@ -32,6 +32,8 @@ A: This:
 ```
 Check out http://www.figlet.org/ to get with the times.
  
-install details
-Make sure you've got the figlet program installed on your $PATH 
-Copy script into your .vim/plugin directory
+###install details
+
+Make sure you've got the figlet program installed on your $PATH
+
+Copy FIGlet.vim into your .vim/plugin directory
