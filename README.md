@@ -30,7 +30,7 @@ A: This:
 |_| |_|\__, |_|\___|\__| 
 	   |___/             
 ```
-Er, that wasn't quite as impressive as I was hoping.  Check out http://www.figlet.org/ to get with the times.
+Check out http://www.figlet.org/ to get with the times.
  
 install details
 Make sure you've got the figlet program installed on your $PATH 
