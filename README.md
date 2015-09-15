@@ -13,14 +13,15 @@ A3. Text-objects - use the g@ operator with text-objects for blazing fast transf
 A4. A font sample buffer to help you pick out the perfect font for the occasion 
 
 Q: Okay, I'm sold.  But what is this FIGlet you speak of? 
-A: This: 
-	  __ _       _      _   
-	/ _(_) __ _| | ___| |_ 
-	| |_| |/ _` | |/ _ \ __| 
-	|  _| | (_| | |  __/ |_ 
-	|_| |_|\__, |_|\___|\__| 
-		   |___/             
-
+A: This:
+```
+  __ _       _      _   
+/ _(_) __ _| | ___| |_ 
+| |_| |/ _` | |/ _ \ __| 
+|  _| | (_| | |  __/ |_ 
+|_| |_|\__, |_|\___|\__| 
+	   |___/             
+```
 Er, that wasn't quite as impressive as I was hoping.  Check out http://www.figlet.org/ to get with the times.
  
 install details
