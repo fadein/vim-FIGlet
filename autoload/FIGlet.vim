@@ -28,7 +28,7 @@ function! <SID>RunFIGlet(text, opts, width, font, fontdir) "{{{
 	endif
 	
 	" set the width to &textwidth or default
-	if exists('s:overrideWidth') 
+	if exists('s:overrideWidth') || opts =~ '-w'
 		let width = ''
 	elseif '' != a:width
 		let width = '-w ' . a:width
