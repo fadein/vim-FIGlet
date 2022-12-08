@@ -2,9 +2,9 @@
 
 " ==========================================================================
 " File:         FIGlet.vim (global plugin)
-" Last Changed: 2016-07-07
+" Last Changed: 2022-12-07
 " Maintainer:   Erik Falor <ewfalor@gmail.com>
-" Version:      3.1
+" Version:      3.2
 " License:      Vim License
 " Source:		http://www.vim.org/scripts/script.php?script_id=3359
 " GitHub:       https://github.com/fadein/vim-FIGlet.git
@@ -48,7 +48,7 @@ if exists('g:loaded_FIGlet')
     finish
 endif
 
-let g:loaded_FIGlet = '3.1'
+let g:loaded_FIGlet = '3.2'
 
 
 " Check whether there is a figlet(1) program in the path

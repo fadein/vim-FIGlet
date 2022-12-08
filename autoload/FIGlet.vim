@@ -151,11 +151,13 @@ function! FIGlet#FIGFontDemo(...) "{{{
 				echon printf("Demoing font %s...\r", font)
 				put =font
 				put ='==========================='
+				let s:overrideWidth = 1
 				if a:0 == 1 && len(a:1) > 0
-					silent put =<SID>RunFIGlet(a:1, '', '', font, '')
+					silent put =<SID>RunFIGlet(a:1, '-t', '', font, '')
 				else
-					silent put =<SID>RunFIGlet(font, '', '', font, '')
+					silent put =<SID>RunFIGlet(font, '-t', '', font, '')
 				endif
+				unlet s:overrideWidth
 			catch /figlet error/
 				put =printf('FIGlet failed on font %s', font)
 			finally
